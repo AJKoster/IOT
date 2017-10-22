@@ -2002,12 +2002,6 @@ void ICACHE_RAM_ATTR osWatch(void) // watchdog
 	}
 }
 
-
-extern "C" {
-#include "user_interface.h"
-}
-//uint32_t free = system_get_free_heap_size();
-
 // Read the WeatherUnderground data for specified location
 // -------------------------------------------------------
 String ReadWeatherUnderground(String myFeatures) {
