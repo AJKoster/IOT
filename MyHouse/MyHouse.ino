@@ -2117,7 +2117,7 @@ String ReadWeatherUnderground(String myFeatures) {
 			return "";
 		}
 		// Terminate the C string, first brackets for error when not enough closing brackets
-		respBuf[respLen++] = '}';
+		respBuf[respLen++] = '"';
 		respBuf[respLen++] = '}';
 		respBuf[respLen++] = '}';
 		respBuf[respLen++] = '}';
