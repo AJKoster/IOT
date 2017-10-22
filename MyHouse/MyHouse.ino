@@ -1365,7 +1365,7 @@ void setup_display(void)
 {
 	/* Set the baudrate which is for dcommunicate with Nextion screen. */
 	nexInit();
-	nexSerial.begin(115200);
+	nexSerial.begin(57600);
 	delay(2000);
 	/* Register the pop event callback function of the dual state button component. */
 	bt0.attachPop(bt0PopCallback, &bt0);
