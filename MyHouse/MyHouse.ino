@@ -12,7 +12,7 @@ Author:		Addy Koster
 // A.J. Koster
 
 // Version
-String version = "3.7";
+String version = "3.8";
 String program = "MyHouse";
 #define Sensor 2 // 1 = ..., 2 = MyHouse, 3 = ..
 
