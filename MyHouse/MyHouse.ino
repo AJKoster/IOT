@@ -12,7 +12,7 @@ Author:		Addy Koster
 // A.J. Koster
 
 // Version
-String version = "3.8";
+String version = "3.9";
 String program = "MyHouse";
 #define Sensor 2 // 1 = ..., 2 = MyHouse, 3 = ..
 
@@ -137,6 +137,9 @@ String ConvertMillis()
 // enable second UART channel
 SoftwareSerial HMISerial(14, 12,false,1024);  //nextion lcd on pins GPIO14 (RX:blue/PIN D5) and GPIO12 (TX:Yellow/PIN D6)
 
+// last page updated
+int OldDisplayPage = 99; // dummy value
+
 // define pages
 NexPage page0 = NexPage(0, 0, "page0");
 NexPage page1 = NexPage(1, 0, "page1");
@@ -144,10 +147,12 @@ NexPage page2 = NexPage(2, 0, "page2");
 NexPage page3 = NexPage(3, 0, "page3");
 
 // Declare a text object [page id:0,component id:2, component name: "textNumber"].
+
 // page 0
 NexText tDatum = NexText(0, 2, "tDatum");
 NexText tTijd = NexText(0, 3, "tTijd");
 NexText tVersion = NexText(0, 5, "tVersion");
+
 // page 1
 NexText tTemperature = NexText(1, 3, "tTemperature");
 NexText tHumidity = NexText(1, 5, "tHumidity");
@@ -161,8 +166,8 @@ NexText tLux = NexText(1, 18, "tLux");
 NexPicture pWeather = NexPicture(1, 28, "pWeather");
 NexText tIcon = NexText(1, 29, "tIcon");
 NexText tWUlastUpdate = NexText(1, 30, "tWUlastUpdate");
-// page 2
 
+// page 2
 NexDSButton bt0 = NexDSButton(2, 3, "bt0");
 
 // page 3
@@ -284,10 +289,10 @@ Task t4(360000L, TASK_FOREVER, &postData, &runner);	// 6 minutes
 Task t5(300000L, TASK_FOREVER, &postDataDomoticz, &runner);	// 5 minutes
 Task t6(1000L, TASK_FOREVER, &watchDog, &runner);	// 1 seconds beat
 Task t7(60000L, TASK_FOREVER, &digitalClockDisplay, &runner); // 60 seconds beat
-Task t8(15000L, TASK_FOREVER, &Update_Display, &runner);	// 15 seconds beat
+Task t8(5000L, TASK_FOREVER, &Update_Display, &runner);	// 5 seconds beat
 Task t9(30000L, TASK_FOREVER, &SendDataToBlynk, &runner);	// 30 seconds beat
 Task t10(600000L, TASK_FOREVER, &UpdateWeather, &runner);	// 10 min beat
-Task t11(10000L, TASK_FOREVER, &ResetMinMax, &runner);	// 10 seconds beat
+Task t11(30000L, TASK_FOREVER, &ResetMinMax, &runner);	// 30 seconds beat
 Task t12(6 * 3600000L, TASK_FOREVER, &UpdateAstronomy, &runner); // 6 hrs beat
 Task t13(6 * 3600000L, TASK_FOREVER, &UpdateForecast, &runner);	 // 6 hrs beat
 
@@ -908,12 +913,20 @@ void watchDog()
 	WDstatus = (WDstatus == 0);
 	// set watchdog in right state
 	digitalWrite(WdLED, WDstatus);
-	// update time display
-	Update_Display();
+
 	// send data to Blynk
 	if (BlynkServerUsed) {
 		Blynk.virtualWrite(V9, 155 * WDstatus);
-		terminal.flush();
+	}
+
+	// Get the page number of display
+	// http://support.iteadstudio.com/support/discussions/topics/11000001697
+	uint8_t DisplayPage = 0;//will store the page number.
+	sendCurrentPageId(&DisplayPage);// call the method to get the page number.
+	if (OldDisplayPage != DisplayPage) {
+
+		dbSerialEMPrintln(ConvertMillis() + " Update_Display()");
+		Update_Display();
 	}
 }
 
@@ -1237,8 +1250,6 @@ void DoIt() {
 		GetRTCTime();
 	}
 
-	// Update display with the latest values
-	Update_Display();
 	FunctionName = "idle";
 
 	dbSerialEMPrintln(ConvertMillis() + " " + tsDataDomoticz);
@@ -1829,10 +1840,13 @@ void Update_Display() {
 
 	// Get the page number
 	// http://support.iteadstudio.com/support/discussions/topics/11000001697
-	uint8_t DisplayPage = 0;//will store the page number.
+	uint8_t DisplayPage = OldDisplayPage;//will store the page number.
 	sendCurrentPageId(&DisplayPage);// call the method to get the page number.
+	dbSerialEMPrintln(ConvertMillis() + " Start Display update, old: "+OldDisplayPage+" New: "+DisplayPage);
+	OldDisplayPage = DisplayPage;
 
-	// Init all displays vbalues
+
+	// Displays values
 	// page0
 	switch (DisplayPage) {
 	case 0:
@@ -1848,12 +1862,15 @@ void Update_Display() {
 		tTemperature.setText(String(BME280_temp).c_str());
 		tHumidity.setText(String(BME280_humidity).c_str());
 		tTempOut.setText(String(WUtemperature).c_str());
+		yield();
 		tHumitOut.setText(String(WUhumidity).c_str());
 		tDewpOut.setText(String(WUdewpoint).c_str());
 		tDewpoint.setText(String(BME280_dewpoint).c_str());
+		yield();
 		tAirQ.setText(String(CO2_value_Corr).c_str());
 		tAtmP.setText(String(BME280_pressure).c_str());
 		tLux.setText(String(BH1750lux).c_str());
+		yield();
 		tIcon.setText(String(WUicon).c_str());
 		pWeather.setPic(ConvertIconWU(WUicon));
 		tWUlastUpdate.setText(String(WUlastUpdate).c_str());
@@ -1883,10 +1900,17 @@ void Update_Display() {
 		}
 		break;
 
+
+	case 3:
+
+		break;
+
+
 	default:
 
 		break;
 	}
+	dbSerialEMPrintln(ConvertMillis() + " Stop Display update");
 	FunctionName = "idle";
 }
 
@@ -2116,11 +2140,7 @@ String ReadWeatherUnderground(String myFeatures) {
 			FunctionName = "idle";
 			return "";
 		}
-		// Terminate the C string, first brackets for error when not enough closing brackets
-		respBuf[respLen++] = '"';
-		respBuf[respLen++] = '}';
-		respBuf[respLen++] = '}';
-		respBuf[respLen++] = '}';
+		// Terminate the C string
 		respBuf[respLen++] = '\0';
 
 		if (BlynkServerUsed) {
