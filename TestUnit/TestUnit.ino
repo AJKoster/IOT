@@ -73,7 +73,7 @@ void CheckRTC () {
 		}
 	}
 	// check NTP time with system time. Update on difference and year <> 2013
-	if (now.minute() != minute()) {
+	if ((now.minute() != minute()) || (now.hour() != hour())) {
 		if (year() != 2013) {
 			rtc.adjust(DateTime(year(), month(), day(), hour(), minute(), second()));
 		}
@@ -419,6 +419,7 @@ void postDataDomoticz()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " Domoticz connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 	dbSerialEMPrintln(ConvertMillis() + " Connecting to Domoticz...");
@@ -435,6 +436,7 @@ void postDataDomoticz()
 		dbSerialEMPrintln(ConvertMillis() + " Connection to Domoticz failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " Domoticz failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -463,6 +465,7 @@ void postDataDomoticz()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz success");
+			terminal.flush();
 		}
 	}
 	else {
@@ -470,6 +473,7 @@ void postDataDomoticz()
 		dbSerialEMPrintln(ConvertMillis() + " Connection Domoticz failed (2)");
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -528,6 +532,7 @@ void SendDataToBlynk() {
 		FunctionName = __FUNCTION__;
 		dbSerialEMPrintln(ConvertMillis() + " Start Blynk communication");
 		//terminal.println(String(ConvertMillis()) + " Start Blynk communication");
+		//terminal.flush();
 
 
 		if (ccs811SensorInstalled) {
@@ -539,6 +544,7 @@ void SendDataToBlynk() {
 
 		dbSerialEMPrintln(ConvertMillis() + " Stop Blynk communication");
 		//terminal.println(String(ConvertMillis()) + " Stop Blynk communication");
+		//terminal.flush();
 
 		FunctionName = "idle";
 	}

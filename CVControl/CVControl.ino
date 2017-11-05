@@ -27,7 +27,7 @@ Author:	Addy
 **************************************************************/
 
 // Version
-String version = "1.60";
+String version = "1.61";
 String program = "CVControl";
 #define Satellite 1 // 1 = CVmasterControl, 2 = .., 3 = ...
 
@@ -81,7 +81,7 @@ void CheckRTC() {
 		}
 	}
 	// check NTP time with system time. Update on difference and year <> 2013
-	if (now.minute() != minute()) {
+	if ((now.minute() != minute()) || (now.hour() != hour()))  {
 		if (year() != 2013) {
 			rtc.adjust(DateTime(year(), month(), day(), hour(), minute(), second()));
 		}
@@ -444,6 +444,7 @@ void postDataDomoticz()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal1.println(TimeString + " Domoticz success");
+			terminal1.flush();
 		}
 	}
 	else {
@@ -451,6 +452,7 @@ void postDataDomoticz()
 		dbSerialEMPrintln(ConvertMillis() + " Connection Domoticz failed (2)");
 		if (BlynkServerUsed) {
 			terminal1.println(TimeString + " Domoticz failed");
+			terminal1.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -501,6 +503,7 @@ void SendDataToBlynk() {
 		FunctionName = __FUNCTION__;
 		dbSerialEMPrintln(ConvertMillis() + " Start Blynk communication");
 		//terminal1.println(TimeString + " Start Blynk communication");
+		//terminal1.flush();
 
 		// Software version
 		Blynk.virtualWrite(V45, version);
@@ -514,7 +517,7 @@ void SendDataToBlynk() {
 
 		dbSerialEMPrintln(ConvertMillis() + " Stop Blynk communication");
 		//terminal1.println(TimeString + " Stop Blynk communication");
-
+		//terminal1.flush();
 		FunctionName = "idle";
 	}
 }
@@ -844,15 +847,15 @@ void handle_server()
 	if (req.indexOf("/gpio/0") != -1)
 	{
 		val = 0;
-		StatusAddy = "Addy weg";
+		StatusAddy = " Addy weg";
 	}
 	else if (req.indexOf("/gpio/1") != -1)
 	{
 		val = 1;
-		StatusAddy = "Addy thuis";
+		StatusAddy = " Addy thuis";
 	}
 	else {
-		dbSerialEMPrintln("invalid request");
+		dbSerialEMPrintln(" invalid request");
 		client.stop();
 		return;
 	}

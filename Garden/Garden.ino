@@ -12,7 +12,7 @@ Author:		Addy Koster
 // A.J. Koster
 
 // Version
-String version = "3.3";
+String version = "3.4";
 String program = "Garden";
 #define Sensor 1 // 1 = Garden, 2 = MyHouse, 3 = Test
 
@@ -66,7 +66,7 @@ void CheckRTC() {
 		}
 	}
 	// check NTP time with system time. Update on difference and year <> 2013
-	if (now.minute() != minute()) {
+	if ((now.minute() != minute()) || (now.hour() != hour())) {
 		if (year() != 2013) {
 			rtc.adjust(DateTime(year(), month(), day(), hour(), minute(), second()));
 		}
@@ -719,6 +719,7 @@ void updateThingSpeak()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " ThingSp. connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 	const int httpPort = 80;
@@ -729,6 +730,7 @@ void updateThingSpeak()
 		dbSerialEMPrintln(ConvertMillis() + " Connection to ThingSpeak Failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -758,12 +760,14 @@ void updateThingSpeak()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. success");
+			terminal.flush();
 		}
 	}
 	else {
 		dbSerialEMPrintln(ConvertMillis() + "Connection to ThingSpeak failed (2)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -785,6 +789,7 @@ void postData()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " MyHouse connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 
@@ -805,6 +810,7 @@ void postData()
 		dbSerialEMPrintln(ConvertMillis() + " Connection to MyHouse Failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " MyHouse failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -840,6 +846,7 @@ void postData()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " MyHouse success");
+			terminal.flush();
 		}
 	}
 	else {
@@ -847,6 +854,7 @@ void postData()
 		dbSerialEMPrintln(ConvertMillis() + " Connection to MyHouse Failed(2)...");
 		if (BlynkServerUsed) {
 			terminal.print(ConvertMillis() + " MyHouse failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -870,6 +878,7 @@ void postDataDomoticz()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " Domoticz connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 	dbSerialEMPrintln(ConvertMillis() + " Connecting to Domoticz...");
@@ -886,6 +895,7 @@ void postDataDomoticz()
 		dbSerialEMPrintln(ConvertMillis() + " Connection to Domoticz failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " Domoticz failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -914,6 +924,7 @@ void postDataDomoticz()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz success");
+			terminal.flush();
 		}
 	}
 	else {
@@ -921,6 +932,7 @@ void postDataDomoticz()
 		dbSerialEMPrintln(ConvertMillis() + " Connection Domoticz failed (2)");
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -1056,14 +1068,14 @@ void SendDataToBlynk() {
 				bridgeCV.virtualWrite(V50, BME280_temp);
 				Blynk.virtualWrite(V50, BME280_temp);
 				if (BlynkServerUsed) {
-					terminal.println(String(ConvertMillis()) + " V50 send");
+					//terminal.println(String(ConvertMillis()) + " V50 send");
 				}
 				break;
 			case 2: // MyHouse
 				bridgeCV2.virtualWrite(V60, BME280_temp);
 				Blynk.virtualWrite(V60, BME280_temp);
 				if (BlynkServerUsed) {
-					terminal.println(String(ConvertMillis()) + " V60 send");
+					//terminal.println(String(ConvertMillis()) + " V60 send");
 				}
 				break;
 			}
@@ -1092,6 +1104,7 @@ void SendDataToBlynk() {
 
 		dbSerialEMPrintln(ConvertMillis() + " Stop Blynk communication");
 		//terminal.println(String(ConvertMillis()) + " Stop Blynk communication");
+		//terminal.flush();
 
 		FunctionName = "idle";
 	}

@@ -65,7 +65,7 @@ void CheckRTC() {
 		}
 	}
 	// check NTP time with system time. Update on difference and year <> 2013
-	if (now.minute() != minute()) {
+	if ((now.minute() != minute()) || (now.hour() != hour())) {
 		if (year() != 2013) {
 			rtc.adjust(DateTime(year(), month(), day(), hour(), minute(), second()));
 		}
@@ -977,9 +977,10 @@ void updateThingSpeak()
 
 		while (client.available()) {
 			String line = client.readStringUntil('\r');
+			//dbSerialEMPrintln(line);
 		}
 
-		dbSerialEMPrintln("\n" + ConvertMillis() + " Disconnecting ThingSpeak");
+		dbSerialEMPrintln(ConvertMillis() + " Disconnecting ThingSpeak");
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. success");
@@ -1061,10 +1062,10 @@ void postData()
 		client.setTimeout(500);
 		while (client.available()) {
 			String line = client.readStringUntil('\r');
-			dbSerialEMPrint(line);
+			//dbSerialEMPrintln(line);
 		}
 		// Close connection
-		dbSerialEMPrintln("\n" + ConvertMillis() + " Disconnecting MyHouse...");
+		dbSerialEMPrintln(ConvertMillis() + " Disconnecting MyHouse...");
 
 		client.stop();
 		if (BlynkServerUsed) {
@@ -1138,11 +1139,11 @@ void postDataDomoticz()
 		client.setTimeout(500);
 		while (client.available()) {
 			String line = client.readStringUntil('\r');
-			dbSerialEMPrint(line);
+			//dbSerialEMPrintln(line);
 		}
 
 		// Close connection
-		dbSerialEMPrintln("\n" + ConvertMillis() + " Disconnecting Domoticz...");
+		dbSerialEMPrintln(ConvertMillis() + " Disconnecting Domoticz...");
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz success");
@@ -1891,7 +1892,7 @@ void Update_Display() {
 			tAtmP.setText(String(BME280_pressure).c_str());
 			tLux.setText(String(BH1750lux).c_str());
 			yield();
-			tIcon.setText(String(WUicon).c_str());
+			tIcon.setText(String(WUweather).c_str());
 			pWeather.setPic(ConvertIconWU(WUicon));
 			tWUlastUpdate.setText(String(WUlastUpdate).c_str());
 			break;
