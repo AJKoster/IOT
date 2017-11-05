@@ -135,10 +135,13 @@ String ConvertMillis()
 #include <espsoftwareserial/SoftwareSerial.h> //use EspSoftwareSerial version 3.2.3 https://github.com/plerup/espsoftwareserial
 
 // enable second UART channel
-SoftwareSerial HMISerial(14, 12,false,1024);  //nextion lcd on pins GPIO14 (RX:blue/PIN D5) and GPIO12 (TX:Yellow/PIN D6)
+SoftwareSerial HMISerial(14, 12,false,3000);  //nextion lcd on pins GPIO14 (RX:blue/PIN D5) and GPIO12 (TX:Yellow/PIN D6)
+//SoftwareSerial HMISerial(14, 12);  //nextion lcd on pins GPIO14 (RX:blue/PIN D5) and GPIO12 (TX:Yellow/PIN D6)
 
-// last page updated
-int OldDisplayPage = 99; // dummy value
+// Display pages updated
+uint8_t OldDisplayPage = 99; // dummy value
+uint8_t CurrentDisplayPage = 0;//will store the page number.
+bool SetFlagUpdateDisplay = true; //flag for page update
 
 // define pages
 NexPage page0 = NexPage(0, 0, "page0");
@@ -289,7 +292,7 @@ Task t4(360000L, TASK_FOREVER, &postData, &runner);	// 6 minutes
 Task t5(300000L, TASK_FOREVER, &postDataDomoticz, &runner);	// 5 minutes
 Task t6(1000L, TASK_FOREVER, &watchDog, &runner);	// 1 seconds beat
 Task t7(60000L, TASK_FOREVER, &digitalClockDisplay, &runner); // 60 seconds beat
-Task t8(5000L, TASK_FOREVER, &Update_Display, &runner);	// 5 seconds beat
+Task t8(2000L, TASK_FOREVER, &Update_Display, &runner);	// 2 seconds beat
 Task t9(30000L, TASK_FOREVER, &SendDataToBlynk, &runner);	// 30 seconds beat
 Task t10(600000L, TASK_FOREVER, &UpdateWeather, &runner);	// 10 min beat
 Task t11(30000L, TASK_FOREVER, &ResetMinMax, &runner);	// 30 seconds beat
@@ -920,13 +923,10 @@ void watchDog()
 	}
 
 	// Get the page number of display
-	// http://support.iteadstudio.com/support/discussions/topics/11000001697
-	uint8_t DisplayPage = 0;//will store the page number.
-	sendCurrentPageId(&DisplayPage);// call the method to get the page number.
-	if (OldDisplayPage != DisplayPage) {
-
+	get_current_display_page();
+	if ((OldDisplayPage != CurrentDisplayPage) || (CurrentDisplayPage==0)){
 		dbSerialEMPrintln(ConvertMillis() + " Update_Display()");
-		Update_Display();
+		SetFlagUpdateDisplay = true;
 	}
 }
 
@@ -942,16 +942,18 @@ void updateThingSpeak()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " ThingSp. connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 	const int httpPort = 80;
 	dbSerialEMPrintln(ConvertMillis() + " Connecting to ThingSpeak...");
-	dbSerialEMPrintln(tsDataThingSpeak);
+	//dbSerialEMPrintln(tsDataThingSpeak);
 
 	if (!client.connect(thingSpeakAddress, httpPort)) {
 		dbSerialEMPrintln(ConvertMillis() + " Connection to ThingSpeak Failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -981,12 +983,14 @@ void updateThingSpeak()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. success");
+			terminal.flush();
 		}
 	}
 	else {
 		dbSerialEMPrintln(ConvertMillis() + "Connection to ThingSpeak failed (2)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " ThingSp. failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -1008,26 +1012,28 @@ void postData()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " MyHouse connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 
 	// If there's data and a successful connection, send the HTTP POST request
-	dbSerialEMPrintln(ConvertMillis() + " Connecting to MyHouse...");
-	dbSerialEMPrintln("POST /data/receive_data.php HTTP/1.1");
-	dbSerialEMPrintln("Host: myhouse.my-net.nl");
-	dbSerialEMPrintln("User-Agent: Arduino/1.0");
-	dbSerialEMPrintln("Connection: close");
-	dbSerialEMPrintln("Content-Type: application/x-www-form-urlencoded;");
-	dbSerialEMPrint("Content-Length: ");
-	dbSerialEMPrintln(tsDataMyHouse.length());
-	dbSerialEMPrintln();
-	dbSerialEMPrintln(tsDataMyHouse);
+	//dbSerialEMPrintln(ConvertMillis() + " Connecting to MyHouse...");
+	//dbSerialEMPrintln("POST /data/receive_data.php HTTP/1.1");
+	//dbSerialEMPrintln("Host: myhouse.my-net.nl");
+	//dbSerialEMPrintln("User-Agent: Arduino/1.0");
+	//dbSerialEMPrintln("Connection: close");
+	//dbSerialEMPrintln("Content-Type: application/x-www-form-urlencoded;");
+	//dbSerialEMPrint("Content-Length: ");
+	//dbSerialEMPrintln(tsDataMyHouse.length());
+	//dbSerialEMPrintln();
+	//dbSerialEMPrintln(tsDataMyHouse);
 
 	if (!client.connect(MyHouseServer, 80)) {
 
 		dbSerialEMPrintln(ConvertMillis() + " Connection to MyHouse Failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " MyHouse failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -1063,6 +1069,7 @@ void postData()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " MyHouse success");
+			terminal.flush();
 		}
 	}
 	else {
@@ -1070,6 +1077,7 @@ void postData()
 		dbSerialEMPrintln(ConvertMillis() + " Connection to MyHouse Failed(2)...");
 		if (BlynkServerUsed) {
 			terminal.print(ConvertMillis() + " MyHouse failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -1093,22 +1101,23 @@ void postDataDomoticz()
 
 	if (BlynkServerUsed) {
 		terminal.println(ConvertMillis() + " Domoticz connect");
+		terminal.flush();
 	}
 	FunctionName = __FUNCTION__;
 	dbSerialEMPrintln(ConvertMillis() + " Connecting to Domoticz...");
-	dbSerialEMPrint(String("GET ") + tsDataDomoticz + " HTTP/1.1\r\n" +
+	/*dbSerialEMPrint(String("GET ") + tsDataDomoticz + " HTTP/1.1\r\n" +
 		"Host: " + DomoticzServer + " \r\n" +
 		"Connection: close\r\n" +
 		"Authorization: Basic " + DomoticzUserPass + " \r\n" +
 		"Content-Length: 0\r\n" +
 		"\r\n"
 	);
-
+	*/
 	if (!client.connect(DomoticzServer, 8080)) {
-
 		dbSerialEMPrintln(ConvertMillis() + " Connection to Domoticz failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " Domoticz failed");
+			terminal.flush();
 		}
 		return;
 	}
@@ -1137,6 +1146,7 @@ void postDataDomoticz()
 		client.stop();
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz success");
+			terminal.flush();
 		}
 	}
 	else {
@@ -1144,6 +1154,7 @@ void postDataDomoticz()
 		dbSerialEMPrintln(ConvertMillis() + " Connection Domoticz failed (2)");
 		if (BlynkServerUsed) {
 			terminal.println(String(ConvertMillis()) + " Domoticz failed");
+			terminal.flush();
 		}
 	}
 	FunctionName = "idle";
@@ -1250,12 +1261,14 @@ void DoIt() {
 		GetRTCTime();
 	}
 
-	FunctionName = "idle";
-
-	dbSerialEMPrintln(ConvertMillis() + " " + tsDataDomoticz);
-	dbSerialEMPrintln(ConvertMillis() + " " + tsDataThingSpeak);
-	dbSerialEMPrintln(ConvertMillis() + " " + tsDataMyHouse);
+	//Update display
+	SetFlagUpdateDisplay = true;
+	
+	//dbSerialEMPrintln(ConvertMillis() + " " + tsDataDomoticz);
+	//dbSerialEMPrintln(ConvertMillis() + " " + tsDataThingSpeak);
+	//dbSerialEMPrintln(ConvertMillis() + " " + tsDataMyHouse);
 	dbSerialEMPrintln(ConvertMillis() + " DoIt stopped... ");
+	FunctionName = "idle";
 }
 
 void SendDataToBlynk() {
@@ -1275,10 +1288,8 @@ void SendDataToBlynk() {
 			// MyHouse
 			bridgeCV.virtualWrite(V60, BME280_temp);
 			Blynk.virtualWrite(V60, BME280_temp);
-			if (BlynkServerUsed) {
-				//terminal.println(String(ConvertMillis()) + " V60 send");
-			}
-
+			//terminal.println(String(ConvertMillis()) + " V60 send");
+			//terminal.flush();
 		}
 		if (BH1750SensorInstalled) {
 			Blynk.virtualWrite(V4, BH1750lux);
@@ -1382,6 +1393,15 @@ void setup_display(void)
 	bt0.attachPop(bt0PopCallback, &bt0);
 
 	dbSerialEMPrintln(ConvertMillis() + " Display Setup done");
+}
+
+
+void get_current_display_page() {
+
+	// Get the page number of display
+	// http://support.iteadstudio.com/support/discussions/topics/11000001697
+	
+	sendCurrentPageId(&CurrentDisplayPage);// call the method to get the page number.
 }
 
 // This function will run every time Blynk connection is established
@@ -1834,83 +1854,84 @@ void performOTA() {
 }
 
 void Update_Display() {
-	
+		
 	FunctionName = __FUNCTION__;
-	const char* action;
+	
+	if (SetFlagUpdateDisplay) {
 
-	// Get the page number
-	// http://support.iteadstudio.com/support/discussions/topics/11000001697
-	uint8_t DisplayPage = OldDisplayPage;//will store the page number.
-	sendCurrentPageId(&DisplayPage);// call the method to get the page number.
-	dbSerialEMPrintln(ConvertMillis() + " Start Display update, old: "+OldDisplayPage+" New: "+DisplayPage);
-	OldDisplayPage = DisplayPage;
+		const char* action;
 
+		dbSerialEMPrintln(ConvertMillis() + " Start Display update, old: " + OldDisplayPage + " New: " + CurrentDisplayPage);
+		OldDisplayPage = CurrentDisplayPage;
+		SetFlagUpdateDisplay = false;
 
-	// Displays values
-	// page0
-	switch (DisplayPage) {
-	case 0:
+		// Displays values
+		
+		switch (CurrentDisplayPage) {
+		// page0
+		case 0:
 
-		tDatum.setText((String(day()) + "-" + String(month()) + "-" + String(year())).c_str());
-		tTijd.setText((String(hour()) + ":" + String(minute()) + ":" + String(second())).c_str());
-		tVersion.setText((" Version: " + version).c_str());
+			tDatum.setText((String(day()) + "-" + String(month()) + "-" + String(year())).c_str());
+			tTijd.setText((String(hour()) + ":" + String(minute()) + ":" + String(second())).c_str());
+			tVersion.setText((" Version: " + version).c_str());
 
-		break;
+			break;
+		// page1
+		case 1:
 
-	case 1:
+			tTemperature.setText(String(BME280_temp).c_str());
+			tHumidity.setText(String(BME280_humidity).c_str());
+			tTempOut.setText(String(WUtemperature).c_str());
+			yield();
+			tHumitOut.setText(String(WUhumidity).c_str());
+			tDewpOut.setText(String(WUdewpoint).c_str());
+			tDewpoint.setText(String(BME280_dewpoint).c_str());
+			yield();
+			tAirQ.setText(String(CO2_value_Corr).c_str());
+			tAtmP.setText(String(BME280_pressure).c_str());
+			tLux.setText(String(BH1750lux).c_str());
+			yield();
+			tIcon.setText(String(WUicon).c_str());
+			pWeather.setPic(ConvertIconWU(WUicon));
+			tWUlastUpdate.setText(String(WUlastUpdate).c_str());
+			break;
+		// page2
+		case 2:
 
-		tTemperature.setText(String(BME280_temp).c_str());
-		tHumidity.setText(String(BME280_humidity).c_str());
-		tTempOut.setText(String(WUtemperature).c_str());
-		yield();
-		tHumitOut.setText(String(WUhumidity).c_str());
-		tDewpOut.setText(String(WUdewpoint).c_str());
-		tDewpoint.setText(String(BME280_dewpoint).c_str());
-		yield();
-		tAirQ.setText(String(CO2_value_Corr).c_str());
-		tAtmP.setText(String(BME280_pressure).c_str());
-		tLux.setText(String(BH1750lux).c_str());
-		yield();
-		tIcon.setText(String(WUicon).c_str());
-		pWeather.setPic(ConvertIconWU(WUicon));
-		tWUlastUpdate.setText(String(WUlastUpdate).c_str());
-		break;
+			uint32_t dual_state;
 
-	case 2:
-
-		uint32_t dual_state;
-
-		// Get the state value of dual state button component . 
-		bt0.getValue(&dual_state);
-		if (old_heating_button_state != dual_state)
-		{
-			// Synchronize Blynk
-			if (BlynkServerUsed) {
-				if (dual_state) {
-					action = " Heating on";
+			// Get the state value of dual state button component . 
+			bt0.getValue(&dual_state);
+			if (old_heating_button_state != dual_state)
+			{
+				// Synchronize Blynk
+				if (BlynkServerUsed) {
+					if (dual_state) {
+						action = " Heating on";
+					}
+					else {
+						action = " Heating off";
+					}
+					Blynk.virtualWrite(V40, dual_state);
+					terminal.println(ConvertMillis() + " " + String(dual_state) + action);
+					terminal.flush();
 				}
-				else {
-					action = " Heating off";
-				}
-				Blynk.virtualWrite(V40, dual_state);
-				terminal.println(ConvertMillis() + " " + String(dual_state) + action);
-				terminal.flush();
+				old_heating_button_state = dual_state;
 			}
-			old_heating_button_state = dual_state;
+			break;
+
+		// page3
+		case 3:
+
+			break;
+
+
+		default:
+
+			break;
 		}
-		break;
-
-
-	case 3:
-
-		break;
-
-
-	default:
-
-		break;
+		dbSerialEMPrintln(ConvertMillis() + " Stop Display update");
 	}
-	dbSerialEMPrintln(ConvertMillis() + " Stop Display update");
 	FunctionName = "idle";
 }
 
@@ -2039,6 +2060,7 @@ String ReadWeatherUnderground(String myFeatures) {
 		dbSerialEMPrintln(ConvertMillis() + " Connection to WU failed (1)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " Connection WU failed");
+			terminal.flush();
 		}
 		return "";
 	}
@@ -2046,25 +2068,14 @@ String ReadWeatherUnderground(String myFeatures) {
 	FunctionName = __FUNCTION__;
 	dbSerialEMPrintln(ConvertMillis() + " Connected to WU");
 
-	// HTTP request for WeatherUnderground
-	html_cmd =
-		"GET /api/" + myKey + "/" + myFeatures + "/lang:NL/q/pws:" + myWUstation + ".json HTTP/1.1\r\n"
-		"User-Agent: ESP8266/0.1\r\n"
-		"Accept: */*\r\n"
-		"Host: " + WeatherServer + "\r\n"
-		"Connection: close\r\n"
-		"\r\n";
-
-
-
 	 // HTTP request for OpenWeatherMap
-	html_cmd =
-		"GET /data/2.5/" + myFeatures + "?q=" + myCityOWM + "," + myCountryOWM + "&APPID=" + myKeyQWM + " HTTP/1.1\r\n"
-		"User-Agent: ESP8266/0.1\r\n"
-		"Accept: */*\r\n"
-		"Host: " + WeatherServerOWM + "\r\n"
-		"Connection: close\r\n"
-		"\r\n";
+	//html_cmd =
+		//"GET /data/2.5/" + myFeatures + "?q=" + myCityOWM + "," + myCountryOWM + "&APPID=" + myKeyQWM + " HTTP/1.1\r\n"
+		//"User-Agent: ESP8266/0.1\r\n"
+		//"Accept: */*\r\n"
+		//"Host: " + WeatherServerOWM + "\r\n"
+		//"Connection: close\r\n"
+		//"\r\n";
 
 	//html_cmd = "GET /data/2.5/weather?q=Rotterdam,NL&appid=8eb97b8287f937f6bc7792765622dae9&mode=json&units=metric&cnt=1 HTTP/1.1\r\n";
 	
@@ -2078,8 +2089,7 @@ String ReadWeatherUnderground(String myFeatures) {
 		"Connection: close\r\n"
 		"\r\n";
 
-
-	dbSerialEMPrintln(ConvertMillis() + " Command: "+ html_cmd);
+	//dbSerialEMPrintln(ConvertMillis() + " Command: "+ html_cmd);
 	client.setTimeout(500);
 	client.println(html_cmd);
 
@@ -2145,17 +2155,19 @@ String ReadWeatherUnderground(String myFeatures) {
 
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " WU success " + respLen + " bytes");
+			terminal.flush();
 		}
 	}
 	else {
 		dbSerialEMPrintln(ConvertMillis() + " Connection to WU failed (2)...");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " WU failed");
+			terminal.flush();
 		}
 	}
 
 	dbSerialEMPrintln(ConvertMillis() + " WU received " + respLen + " bytes");
-	dbSerialEMPrintln(ConvertMillis() + " " + respBuf);
+	//dbSerialEMPrintln(ConvertMillis() + " " + respBuf);
 	FunctionName = "idle";
 	dbSerialEMPrintln(ConvertMillis() + " 3.Free memory= " + system_get_free_heap_size());
 
@@ -2179,6 +2191,7 @@ void UpdateWeather()
 		dbSerialEMPrintln(ConvertMillis() + " ParseObject() failed");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " WU ParseObject failed");
+			terminal.flush();
 		}
 	}
 	else {
@@ -2204,6 +2217,9 @@ void UpdateWeather()
 		dbSerialEMPrintln(ConvertMillis() + " Dewpoint: " + WUdewpoint + " oC");
 		dbSerialEMPrintln(ConvertMillis() + " Solarradiation: " + WUsolarradiation + " watts/m2");
 		dbSerialEMPrintln(ConvertMillis() + " Barometric pressure " + WUbarometer+ " mBar");
+		
+		// update disiplay
+		SetFlagUpdateDisplay = true;
 
 	}
 	dbSerialEMPrintln(ConvertMillis() + " WU conversion ready");
@@ -2227,6 +2243,7 @@ void UpdateAstronomy()
 		dbSerialEMPrintln(ConvertMillis() + " ParseObject() failed");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " WU ParseObject failed");
+			terminal.flush();
 		}
 	}
 	else {
@@ -2262,6 +2279,7 @@ void UpdateForecast()
 		dbSerialEMPrintln(ConvertMillis() + " ParseObject() failed");
 		if (BlynkServerUsed) {
 			terminal.println(ConvertMillis() + " WU ParseObject failed");
+			terminal.flush();
 		}
 	}
 	else {
